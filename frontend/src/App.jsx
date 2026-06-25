@@ -1,9 +1,9 @@
 import { useState } from 'react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ||
-  (window.location.hostname === 'localhost'
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://127.0.0.1:8000'
-    : `http://${window.location.hostname}:8000`);
+    : 'https://bsnl-ai-agent-backend.onrender.com');
 
 function App() {
   const [issue, setIssue] = useState('');
@@ -12,16 +12,28 @@ function App() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const response = await fetch(`${API_BASE_URL}/report-issue`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ description: issue }),
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/report-issue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ description: issue }),
+      });
 
-    const data = await response.json();
-    setResult(JSON.stringify(data, null, 2));
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json')
+        ? await response.json()
+        : await response.text();
+
+      if (!response.ok) {
+        throw new Error(typeof data === 'string' ? data : JSON.stringify(data));
+      }
+
+      setResult(JSON.stringify(data, null, 2));
+    } catch (error) {
+      setResult(`Error: ${error.message}`);
+    }
   };
 
   return (
